@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jurnal Guru Digital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --bg:         #f0f2f8;
+  --sidebar-bg: #1a1d2e;
+  --sidebar-w:  220px;
+  --panel:      #ffffff;
+  --panel-2:    #f5f7fd;
+  --border:     #e4e8f4;
+  --text:       #1a1d2e;
+  --text-dim:   #6b7491;
+  --accent:     #5b6ef5;
+  --accent-lt:  rgba(91,110,245,.12);
+  --good:       #3ec67b;
+  --good-lt:    rgba(62,198,123,.12);
+  --warn:       #f5a623;
+  --warn-lt:    rgba(245,166,35,.12);
+  --bad:        #f05c6e;
+  --bad-lt:     rgba(240,92,110,.12);
+  --purple:     #9b59f5;
+  --purple-lt:  rgba(155,89,245,.12);
+  --radius:     12px;
+  --radius-sm:  8px;
+  --shadow:     0 2px 12px rgba(26,29,46,.08);
+  --shadow-lg:  0 8px 32px rgba(26,29,46,.14);
+}
+[data-theme="dark"] {
+  --bg:         #12141f;
+  --sidebar-bg: #0c0e18;
+  --panel:      #1a1d2e;
+  --panel-2:    #1f2235;
+  --border:     #2a2d45;
+  --text:       #e8eaf6;
+  --text-dim:   #7b80a8;
+  --accent:     #6c7eff;
+  --accent-lt:  rgba(108,126,255,.15);
+  --good:       #4dd68c;
+  --good-lt:    rgba(77,214,140,.12);
+  --warn:       #f5b93e;
+  --warn-lt:    rgba(245,185,62,.12);
+  --bad:        #f0697a;
+  --bad-lt:     rgba(240,105,122,.12);
+  --shadow:     0 2px 12px rgba(0,0,0,.35);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,.5);
+}
+
+/* ── Reset & Base ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+.mono{font-family:'JetBrains Mono',monospace;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ═══════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════ */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;
+  background:linear-gradient(135deg,var(--bg) 0%,#dde3ff 100%);}
+[data-theme="dark"] #loginScreen{background:linear-gradient(135deg,#12141f 0%,#1a1d3a 100%);}
+.login-card{background:var(--panel);border:1px solid var(--border);border-radius:20px;
+  padding:44px 40px;width:100%;max-width:380px;text-align:center;box-shadow:var(--shadow-lg);}
+.login-logo{width:60px;height:60px;border-radius:16px;
+  background:linear-gradient(135deg,var(--accent),#9b59f5);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 22px;
+  font-size:28px;font-weight:900;color:#fff;box-shadow:0 8px 20px rgba(91,110,245,.35);}
+.login-card h1{font-size:1.35rem;font-weight:800;margin-bottom:4px;}
+.login-card p{color:var(--text-dim);font-size:.84rem;margin-bottom:26px;}
+.login-card input{width:100%;padding:12px 14px;margin-bottom:10px;
+  background:var(--panel-2);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);font-size:.9rem;font-family:inherit;transition:border .15s;}
+.login-card input:focus{outline:none;border-color:var(--accent);}
+.login-card .btn-login{width:100%;padding:13px;
+  background:linear-gradient(135deg,var(--accent),#9b59f5);
+  color:#fff;border:none;border-radius:var(--radius-sm);font-weight:700;font-size:.95rem;
+  cursor:pointer;font-family:inherit;margin-top:4px;letter-spacing:.02em;
+  box-shadow:0 4px 14px rgba(91,110,245,.3);transition:opacity .15s;}
+.login-card .btn-login:hover{opacity:.9;}
+.login-error{color:var(--bad);font-size:.8rem;margin-top:8px;min-height:1.2em;}
+
+/* ═══════════════════════════════════════════════
+   APP SHELL — Sidebar + Main
+═══════════════════════════════════════════════ */
+#app{display:none;}
+.app-shell{display:flex;min-height:100vh;}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);
+  display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;
+  transition:transform .25s;}
+.sidebar-brand{padding:22px 18px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.06);}
+.brand-logo{width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#9b59f5);
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff;}
+.brand-name{font-size:.92rem;font-weight:800;color:#ffffff;line-height:1.1;}
+.brand-sub{font-size:.68rem;color:rgba(255,255,255,.4);margin-top:1px;}
+
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto;}
+.nav-label{font-size:.64rem;font-weight:700;color:rgba(255,255,255,.3);
+  letter-spacing:.08em;text-transform:uppercase;padding:10px 8px 4px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--radius-sm);
+  cursor:pointer;transition:.15s;color:rgba(255,255,255,.55);font-size:.83rem;font-weight:600;
+  margin-bottom:1px;user-select:none;border:none;background:none;width:100%;text-align:left;font-family:inherit;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);}
+.nav-item.active{background:rgba(91,110,245,.25);color:#ffffff;}
+.nav-item.active .nav-icon{background:var(--accent);}
+.nav-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  font-size:.88rem;flex-shrink:0;background:rgba(255,255,255,.08);transition:.15s;}
+.nav-text{flex:1;}
+.nav-badge{background:var(--bad);color:#fff;font-size:.62rem;font-weight:700;
+  border-radius:10px;padding:1px 6px;}
+
+.sidebar-footer{padding:12px 10px;border-top:1px solid rgba(255,255,255,.06);}
+.user-chip{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);
+  background:rgba(255,255,255,.05);}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#9b59f5);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.76rem;flex-shrink:0;}
+.user-info{flex:1;min-width:0;}
+.user-name{font-size:.8rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{font-size:.67rem;color:rgba(255,255,255,.4);}
+.btn-logout-icon{background:transparent;border:none;color:rgba(255,255,255,.35);cursor:pointer;font-size:1rem;padding:4px;border-radius:5px;transition:.15s;}
+.btn-logout-icon:hover{color:var(--bad);}
+
+/* ── Main area ── */
+.main-area{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* ── Topbar ── */
+.topbar{background:var(--panel);border-bottom:1px solid var(--border);
+  padding:12px 28px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.topbar-left{display:flex;flex-direction:column;}
+.topbar-title{font-size:1.05rem;font-weight:800;}
+.topbar-sub{font-size:.74rem;color:var(--text-dim);margin-top:1px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.topbar-icon{width:36px;height:36px;border-radius:var(--radius-sm);border:1.5px solid var(--border);
+  background:transparent;color:var(--text-dim);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:.92rem;transition:.15s;}
+.topbar-icon:hover{border-color:var(--accent);color:var(--accent);}
+#syncStatus{display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--text-dim);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good);}
+.dot.busy{background:var(--warn);animation:pulse .8s infinite;}
+.dot.err{background:var(--bad);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.period-badge{font-size:.72rem;background:var(--accent-lt);color:var(--accent);
+  border:1px solid rgba(91,110,245,.2);border-radius:20px;padding:4px 10px;font-weight:700;}
+
+/* ── Tab Body ── */
+.tab-body{padding:24px 28px;flex:1;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ═══════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════ */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+.card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.card-header h3{font-size:.93rem;font-weight:700;display:flex;align-items:center;gap:6px;}
+.card-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* Stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;display:flex;align-items:flex-start;gap:14px;box-shadow:var(--shadow);}
+.stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;flex-shrink:0;}
+.stat-icon.blue{background:var(--accent-lt);}
+.stat-icon.green{background:var(--good-lt);}
+.stat-icon.warn{background:var(--warn-lt);}
+.stat-icon.red{background:var(--bad-lt);}
+.stat-icon.purple{background:var(--purple-lt);}
+.stat-num{font-size:1.55rem;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;}
+.stat-lbl{font-size:.72rem;color:var(--text-dim);margin-top:3px;}
+
+/* Progress ring (pakai SVG inline) */
+.progress-ring-container{display:flex;align-items:center;gap:12px;}
+
+/* ═══════════════════════════════════════════════
+   GRID HELPERS
+═══════════════════════════════════════════════ */
+.grid{display:grid;gap:12px;}
+.g2{grid-template-columns:1fr 1fr;}
+.g3{grid-template-columns:1fr 1fr 1fr;}
+.g4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:680px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+
+/* ═══════════════════════════════════════════════
+   FORMS
+═══════════════════════════════════════════════ */
+label{font-size:.77rem;color:var(--text-dim);display:block;margin-bottom:5px;font-weight:600;}
+input,select,textarea{width:100%;padding:9px 12px;
+  background:var(--panel-2);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);font-size:.87rem;font-family:inherit;transition:border .15s;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+textarea{resize:vertical;min-height:68px;}
+.field{margin-bottom:11px;}
+.helper{font-size:.75rem;color:var(--text-dim);margin-top:4px;line-height:1.5;}
+.note-info{font-size:.78rem;color:var(--accent);background:var(--accent-lt);
+  border:1px solid rgba(91,110,245,.2);border-radius:var(--radius-sm);
+  padding:8px 12px;margin-bottom:12px;}
+
+/* ═══════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════ */
+.btn{padding:9px 16px;border-radius:var(--radius-sm);border:none;font-weight:700;
+  font-size:.84rem;cursor:pointer;transition:.15s;font-family:inherit;display:inline-flex;
+  align-items:center;gap:5px;}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(91,110,245,.3);}
+.btn-primary:hover{opacity:.88;}
+.btn-secondary{background:var(--panel-2);color:var(--text);border:1.5px solid var(--border);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:transparent;color:var(--bad);border:1.5px solid var(--bad);}
+.btn-danger:hover{background:var(--bad-lt);}
+.btn-warn{background:transparent;color:var(--warn);border:1.5px solid var(--warn);}
+.btn-warn:hover{background:var(--warn-lt);}
+.btn-sm{padding:5px 10px;font-size:.75rem;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* ═══════════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════════ */
+table{width:100%;border-collapse:collapse;font-size:.83rem;}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--border);}
+th{color:var(--text-dim);font-weight:600;font-size:.72rem;text-transform:uppercase;
+  letter-spacing:.04em;background:var(--panel-2);}
+tr:hover td{background:rgba(91,110,245,.035);}
+.table-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border);}
+
+/* ═══════════════════════════════════════════════
+   BADGE
+═══════════════════════════════════════════════ */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;
+  font-size:.71rem;font-weight:700;}
+.badge-hadir,.badge-closed,.badge-ringan{background:var(--good-lt);color:var(--good);}
+.badge-sakit,.badge-sedang{background:var(--warn-lt);color:var(--warn);}
+.badge-izin{background:var(--accent-lt);color:var(--accent);}
+.badge-alpha,.badge-open,.badge-berat{background:var(--bad-lt);color:var(--bad);}
+
+/* ═══════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════ */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--panel);
+  border-radius:10px;padding:12px 18px;font-size:.84rem;font-weight:600;
+  box-shadow:var(--shadow-lg);transform:translateY(70px);opacity:0;transition:.25s;z-index:999;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:var(--good);}
+.toast.error{background:var(--bad);}
+
+/* ═══════════════════════════════════════════════
+   ATTENDANCE / KEAKTIFAN / NILAI  — 2 KOLOM
+═══════════════════════════════════════════════ */
+.att-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
+@media(max-width:680px){.att-2col{grid-template-columns:1fr;}}
+.attendance-row{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;background:var(--panel-2);border-radius:var(--radius-sm);margin-bottom:4px;}
+.nm{font-size:.84rem;font-weight:500;}
+.no{color:var(--text-dim);font-size:.74rem;margin-right:6px;}
+.att-buttons{display:flex;gap:4px;}
+.att-btn{width:32px;height:28px;border-radius:6px;border:1.5px solid var(--border);
+  background:var(--panel);color:var(--text-dim);font-size:.7rem;font-weight:700;cursor:pointer;transition:.1s;}
+.att-btn.h.sel{background:var(--good-lt);border-color:var(--good);color:var(--good);}
+.att-btn.s.sel{background:var(--warn-lt);border-color:var(--warn);color:var(--warn);}
+.att-btn.i.sel{background:var(--accent-lt);border-color:var(--accent);color:var(--accent);}
+.att-btn.a.sel{background:var(--bad-lt);border-color:var(--bad);color:var(--bad);}
+.part-btns{display:flex;gap:3px;}
+.part-quick{height:27px;padding:0 7px;border-radius:5px;border:1.5px solid var(--border);
+  background:var(--panel);color:var(--text-dim);font-size:.66rem;font-weight:700;cursor:pointer;transition:.1s;}
+.part-quick:hover{border-color:var(--accent);color:var(--accent);}
+.part-score{width:60px;text-align:center;font-family:'JetBrains Mono',monospace;padding:5px 6px;flex-shrink:0;}
+
+/* ═══════════════════════════════════════════════
+   FLAGS / ALERTS
+═══════════════════════════════════════════════ */
+.flag{display:flex;align-items:flex-start;gap:10px;padding:10px 13px;
+  border-radius:var(--radius-sm);margin-bottom:6px;font-size:.82rem;}
+.flag-warn{background:var(--warn-lt);border:1px solid rgba(245,166,35,.3);}
+.flag-danger{background:var(--bad-lt);border:1px solid rgba(240,92,110,.3);}
+.flag-icon{font-size:1rem;}
+
+/* ═══════════════════════════════════════════════
+   TP ITEMS
+═══════════════════════════════════════════════ */
+.tp-item{display:flex;align-items:flex-start;gap:12px;padding:12px;
+  background:var(--panel-2);border-radius:var(--radius-sm);margin-bottom:7px;
+  border-left:3px solid var(--accent);}
+.tp-nomor{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.84rem;
+  color:var(--accent);min-width:60px;padding-top:1px;}
+.tp-desc{flex:1;font-size:.86rem;line-height:1.55;}
+.tp-meta{font-size:.7rem;color:var(--text-dim);margin-top:3px;}
+
+/* ═══════════════════════════════════════════════
+   KALENDER
+═══════════════════════════════════════════════ */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-head{text-align:center;font-size:.7rem;font-weight:700;color:var(--text-dim);padding:6px 0;}
+.cal-cell{min-height:62px;background:var(--panel-2);border-radius:var(--radius-sm);
+  padding:6px;cursor:pointer;transition:.15s;border:1.5px solid transparent;}
+.cal-cell:hover{border-color:var(--accent);}
+.cal-cell.empty{background:transparent;cursor:default;border:none;}
+.cal-cell.today{border-color:var(--accent);background:var(--accent-lt);}
+.cal-num{font-size:.8rem;font-weight:700;}
+.cal-dots{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;}
+.cal-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+
+/* ═══════════════════════════════════════════════
+   PROFIL SISWA
+═══════════════════════════════════════════════ */
+.profil-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:6px;}
+.profil-card{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:var(--panel-2);border-radius:var(--radius-sm);cursor:pointer;
+  border:1.5px solid transparent;transition:.15s;}
+.profil-card:hover{border-color:var(--accent);}
+.profil-avatar{width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.82rem;flex-shrink:0;}
+.profil-avatar-lg{width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:1.1rem;flex-shrink:0;}
+
+/* ═══════════════════════════════════════════════
+   SETTINGS SECTION
+═══════════════════════════════════════════════ */
+.setting-section{border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px;}
+.setting-section h4{font-size:.87rem;font-weight:700;margin-bottom:6px;}
+.setting-section p{font-size:.8rem;color:var(--text-dim);margin-bottom:10px;line-height:1.55;}
+
+/* ═══════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════ */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:200;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  padding:26px;width:100%;max-width:480px;box-shadow:var(--shadow-lg);}
+.modal h3{font-size:1rem;font-weight:800;margin-bottom:14px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+#restoreModalInfo{font-size:.78rem;color:var(--text-dim);white-space:pre-line;
+  background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+  padding:12px;line-height:1.7;margin-bottom:4px;}
+
+/* ═══════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════ */
+.empty{text-align:center;padding:32px 16px;color:var(--text-dim);font-size:.84rem;}
+.empty::before{content:attr(data-icon);display:block;font-size:2rem;margin-bottom:8px;opacity:.5;}
+
+/* ═══════════════════════════════════════════════
+   MISC UTILITY
+═══════════════════════════════════════════════ */
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+/* ── Mobile hamburger ── */
+.sidebar-toggle{display:none;position:fixed;top:14px;left:14px;z-index:200;
+  width:38px;height:38px;border-radius:10px;border:1.5px solid var(--border);
+  background:var(--panel);cursor:pointer;font-size:1.1rem;align-items:center;justify-content:center;}
+@media(max-width:860px){
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main-area{margin-left:0;}
+  .sidebar-toggle{display:flex;}
+  .tab-body{padding:16px;}
+  .topbar{padding:12px 16px;padding-left:60px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">∑</div>
+    <h1>Jurnal Guru Digital</h1>
+    <p>Sistem Manajemen Pembelajaran</p>
+    <input type="text" id="loginUsername" placeholder="Username" autocomplete="username">
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-login" onclick="doLogin()">Masuk →</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ═══ APP ══════════════════════════════════════════════════ -->
+<div id="app">
+  <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+
+  <div class="app-shell">
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">∑</div>
+        <div>
+          <div class="brand-name">Jurnal Guru</div>
+          <div class="brand-sub" id="teacherMapel">Digital</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label">Menu Utama</div>
+        <button class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+          <span class="nav-icon">📊</span><span class="nav-text">Dashboard</span>
+        </button>
+        <button class="nav-item" data-tab="tp" onclick="switchTab('tp')">
+          <span class="nav-icon">🎯</span><span class="nav-text">Tujuan Pembelajaran</span>
+        </button>
+        <button class="nav-item" data-tab="pertemuan" onclick="switchTab('pertemuan')">
+          <span class="nav-icon">📝</span><span class="nav-text">Pertemuan</span>
+        </button>
+        <button class="nav-item" data-tab="keaktifan" onclick="switchTab('keaktifan')">
+          <span class="nav-icon">✋</span><span class="nav-text">Keaktifan</span>
+        </button>
+        <button class="nav-item" data-tab="nilai" onclick="switchTab('nilai')">
+          <span class="nav-icon">🏅</span><span class="nav-text">Nilai</span>
+        </button>
+        <div class="nav-label">Catatan</div>
+        <button class="nav-item" data-tab="kejadian" onclick="switchTab('kejadian')">
+          <span class="nav-icon">⚠️</span><span class="nav-text">Kejadian</span>
+        </button>
+        <button class="nav-item" data-tab="kalender" onclick="switchTab('kalender')">
+          <span class="nav-icon">📅</span><span class="nav-text">Kalender</span>
+        </button>
+        <div class="nav-label">Data</div>
+        <button class="nav-item" data-tab="profil" onclick="switchTab('profil')">
+          <span class="nav-icon">👤</span><span class="nav-text">Profil Siswa</span>
+        </button>
+        <button class="nav-item" data-tab="siswa" onclick="switchTab('siswa')">
+          <span class="nav-icon">👥</span><span class="nav-text">Siswa &amp; Kelas</span>
+        </button>
+        <div class="nav-label">Sistem</div>
+        <button class="nav-item" data-tab="pengaturan" onclick="switchTab('pengaturan')">
+          <span class="nav-icon">⚙️</span><span class="nav-text">Pengaturan</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-avatar" id="teacherInitial">?</div>
+          <div class="user-info">
+            <div class="user-name" id="teacherName">—</div>
+            <div class="user-role" id="syncText">Memuat...</div>
+          </div>
+          <button class="btn-logout-icon" onclick="doLogout()" title="Keluar">⏻</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN AREA ── -->
+    <div class="main-area">
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title" id="topbarTitle">Dashboard</div>
+          <div class="topbar-sub">
+            <span id="syncStatus"><span class="dot" id="syncDot"></span></span>
+            <span class="period-badge" id="periodBadge" style="margin-left:8px;">Ganjil 2026/2027</span>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="topbar-icon" onclick="toggleTheme()" id="themeBtn" title="Ganti tema">🌙</button>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="tab-body">
+
+    <!-- ─── DASHBOARD ─────────────────────────────────── -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="stat-grid" id="dashStats"></div>
+      <div class="grid g2" style="margin-bottom:16px;">
+        <div class="card" style="margin:0;">
+          <div class="card-header"><h3>🔔 Flag Otomatis</h3></div>
+          <div id="dashFlags"><div class="empty" data-icon="✅">Semua aman</div></div>
+        </div>
+        <div class="card" style="margin:0;">
+          <div class="card-header"><h3>📋 Pertemuan Terbaru</h3></div>
+          <div id="dashRecent"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📊 Ringkasan per Kelas</h3></div>
+        <div id="dashKelasCards"></div>
+      </div>
+    </div>
+
+    <!-- ─── TUJUAN PEMBELAJARAN ──────────────────────── -->
+    <div id="tab-tp" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>➕ Tambah Tujuan Pembelajaran</h3></div>
+        <div class="grid g3">
+          <div class="field"><label>Nomor TP</label><input type="text" id="tpNomor" placeholder="TP 1 / 3.1"></div>
+          <div class="field"><label>Berlaku untuk Kelas</label><select id="tpKelas"><option value="Semua">Semua Kelas</option></select></div>
+          <div class="field"><label>Semester</label><select id="tpSemester"><option>Ganjil</option><option>Genap</option></select></div>
+        </div>
+        <div class="field"><label>Tahun Ajaran</label><input type="text" id="tpTA" value="2026/2027" style="max-width:160px;"></div>
+        <div class="field"><label>Deskripsi Tujuan Pembelajaran</label>
+          <textarea id="tpDeskripsi" placeholder="Siswa dapat menyelesaikan persamaan linear satu variabel dengan tepat."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveTP()">Simpan TP</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📌 Daftar TP
+          <div class="card-actions">
+            <select id="tpFilterKelas" onchange="renderTPList()" style="width:auto;"><option value="">Semua</option><option value="Semua">Lintas Kelas</option></select>
+            <select id="tpFilterSemester" onchange="renderTPList()" style="width:auto;"><option value="">Semua Semester</option><option>Ganjil</option><option>Genap</option></select>
+          </div>
+        </h3></div>
+        <div id="tpList"><div class="empty" data-icon="📌">Belum ada Tujuan Pembelajaran.</div></div>
+      </div>
+    </div>
+
+    <!-- ─── PERTEMUAN ────────────────────────────────── -->
+    <div id="tab-pertemuan" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>📝 Input Pertemuan &amp; Absensi</h3></div>
+        <div class="note-info" id="jExistingNote" style="display:none;"></div>
+        <div class="grid g3">
+          <div class="field"><label>Tanggal</label><input type="date" id="jTanggal"></div>
+          <div class="field"><label>Kelas</label><select id="jKelas"></select></div>
+          <div class="field"><label>Jam Ke</label><input type="text" id="jJamKe" placeholder="1-2"></div>
+        </div>
+        <div class="grid g2">
+          <div class="field"><label>Tujuan Pembelajaran (TP)</label><select id="jTP"></select></div>
+          <div class="field"><label>Metode Pembelajaran</label><input type="text" id="jMetode" placeholder="Diskusi kelompok"></div>
+        </div>
+        <div class="field"><label>Materi yang Diajarkan <span style="color:var(--bad);">*</span></label>
+          <textarea id="jMateri" placeholder="Deskripsikan materi..."></textarea>
+        </div>
+        <div class="grid g2">
+          <div class="field"><label>Kendala</label><textarea id="jKendala" placeholder="(opsional)" style="min-height:56px;"></textarea></div>
+          <div class="field"><label>Catatan</label><textarea id="jCatatan" placeholder="(opsional)" style="min-height:56px;"></textarea></div>
+        </div>
+        <hr class="divider">
+        <div style="font-size:.79rem;font-weight:700;color:var(--text-dim);margin-bottom:8px;letter-spacing:.04em;">ABSENSI HARI INI</div>
+        <div class="helper" style="margin-bottom:10px;">Klik H/S/I/A untuk setiap siswa. Default: Hadir.</div>
+        <div class="att-2col" id="attendanceGrid"></div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" id="jSaveBtn" onclick="savePertemuan()">💾 Simpan Pertemuan</button>
+          <button class="btn btn-secondary" onclick="markAllHadir()">✓ Semua Hadir</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📋 Rekap Pertemuan
+          <div class="card-actions">
+            <select id="jurnalFilterKelas" onchange="renderJournalList()" style="width:auto;"><option value="">Semua Kelas</option></select>
+            <button class="btn btn-secondary btn-sm" onclick="exportJurnalXLSX()">⬇ Export XLSX</button>
+          </div>
+        </h3></div>
+        <div class="table-wrap">
+          <table id="journalTable"><thead><tr>
+            <th>Tanggal</th><th>Kelas</th><th>Jam</th><th>TP</th><th>Materi</th><th>Absensi</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+        <div class="empty" id="journalEmpty" style="display:none;" data-icon="📝">Belum ada pertemuan.</div>
+      </div>
+    </div>
+
+    <!-- ─── KEAKTIFAN ────────────────────────────────── -->
+    <div id="tab-keaktifan" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>✋ Catat Keaktifan Siswa</h3></div>
+        <div class="grid g2">
+          <div class="field"><label>Tanggal</label><input type="date" id="pTanggal"></div>
+          <div class="field"><label>Kelas</label><select id="pKelas" onchange="loadParticipationForm()"></select></div>
+        </div>
+        <div class="helper" style="margin-bottom:10px;">Skor 0–100. Tombol cepat: <strong>+10 / +25 / MAX</strong>. Tidak aktif biarkan 0.</div>
+        <div id="participationGrid"></div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveParticipation()">💾 Simpan Keaktifan</button>
+          <button class="btn btn-secondary" onclick="resetAllPart()">✕ Reset Semua</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📈 Rekap Keaktifan
+          <div class="card-actions">
+            <select id="partRekapKelas" onchange="renderParticipationRecap()" style="width:auto;"></select>
+            <button class="btn btn-secondary btn-sm" onclick="exportKeaktifanXLSX()">⬇ Export XLSX</button>
+          </div>
+        </h3></div>
+        <div class="table-wrap"><table id="partRekapTable"><thead><tr>
+          <th>No</th><th>Nama</th><th>Pertemuan Aktif</th><th>Total Skor</th><th>Rata-rata</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ─── NILAI ─────────────────────────────────────── -->
+    <div id="tab-nilai" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>🎯 Input / Edit Nilai</h3></div>
+        <div class="grid g3">
+          <div class="field"><label>Kelas</label><select id="gKelas" onchange="loadGradeForm()"></select></div>
+          <div class="field"><label>Jenis Penilaian</label><select id="gJenis" onchange="loadNamaPenilaianList()"></select></div>
+          <div class="field"><label>Tujuan Pembelajaran</label><select id="gTP"></select></div>
+        </div>
+        <div class="field"><label>Nama Penilaian</label>
+          <select id="gNamaSelect" onchange="onSelectNamaPenilaian()"></select>
+          <input type="text" id="gNamaBaru" placeholder="Atau ketik nama baru…" oninput="onTypeNamaBaru()" style="margin-top:6px;">
+          <div class="helper">Pilih yang ada untuk edit, atau ketik baru untuk tambah penilaian.</div>
+        </div>
+        <div class="field"><label>Tanggal</label><input type="date" id="gTanggal" style="max-width:200px;"></div>
+        <div id="gradeInputTable" style="margin-top:8px;"></div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="saveGrades()">💾 Simpan Nilai</button>
+          <button class="btn btn-secondary" onclick="clearGradeInputs()">✕ Bersihkan</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>⚖ Pengaturan Bobot
+          <div class="card-actions"><select id="wKelas" onchange="renderWeightSettings()" style="width:auto;"></select></div>
+        </h3></div>
+        <div id="weightSettings"></div>
+        <div class="helper" id="weightTotal" style="margin-top:8px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📊 Rekap Nilai
+          <div class="card-actions">
+            <select id="finalKelas" onchange="renderFinalGrades()" style="width:auto;"></select>
+            <button class="btn btn-secondary btn-sm" onclick="exportGradesXLSX()">⬇ Export XLSX</button>
+          </div>
+        </h3></div>
+        <div class="table-wrap"><table id="finalGradeTable"></table></div>
+        <div style="margin-top:16px;" id="gradeChartContainer"></div>
+      </div>
+    </div>
+
+    <!-- ─── CATATAN KEJADIAN ──────────────────────────── -->
+    <div id="tab-kejadian" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>⚠️ Tambah Catatan Kejadian</h3></div>
+        <div class="grid g2">
+          <div class="field"><label>Tanggal</label><input type="date" id="iTanggal"></div>
+          <div class="field"><label>Siswa</label><select id="iSiswa"></select></div>
+        </div>
+        <div class="grid g2">
+          <div class="field"><label>Jenis</label>
+            <select id="iJenis"><option>Disiplin</option><option>Akademik</option><option>Sosial</option><option>Lainnya</option></select>
+          </div>
+          <div class="field"><label>Tingkat</label>
+            <select id="iTingkat"><option>Ringan</option><option>Sedang</option><option>Berat</option></select>
+          </div>
+        </div>
+        <div class="field"><label>Deskripsi Kejadian</label><textarea id="iDeskripsi" placeholder="Apa yang terjadi?"></textarea></div>
+        <div class="field"><label>Tindak Lanjut</label><textarea id="iTindakLanjut" placeholder="(opsional)" style="min-height:56px;"></textarea></div>
+        <button class="btn btn-primary" onclick="saveIncident()">💾 Simpan Catatan</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📋 Riwayat Kejadian
+          <div class="card-actions">
+            <select id="incidentFilterKelas" onchange="populateIncidentStudentFilter();renderIncidentList();" style="width:auto;"><option value="">Semua Kelas</option></select>
+            <select id="incidentFilterStudent" onchange="renderIncidentList()" style="width:auto;"><option value="">Semua Siswa</option></select>
+            <button class="btn btn-secondary btn-sm" onclick="exportKejadianXLSX()">⬇ Export XLSX</button>
+          </div>
+        </h3></div>
+        <div class="table-wrap"><table id="incidentTable"><thead><tr>
+          <th>Tanggal</th><th>Siswa</th><th>Jenis</th><th>Tingkat</th><th>Deskripsi</th><th>Status</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="empty" id="incidentEmpty" style="display:none;" data-icon="✅">Belum ada catatan kejadian.</div>
+      </div>
+    </div>
+
+    <!-- ─── KALENDER ─────────────────────────────────── -->
+    <div id="tab-kalender" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <button class="btn btn-secondary btn-sm" onclick="calPrev()">◀</button>
+          <div id="calTitle" style="font-weight:800;font-size:1rem;"></div>
+          <button class="btn btn-secondary btn-sm" onclick="calNext()">▶</button>
+        </div>
+        <div id="calGrid"></div>
+        <div id="calLegend" style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;"></div>
+      </div>
+      <div class="card" id="calDayDetail"><div class="empty" data-icon="📅">Klik hari pada kalender.</div></div>
+    </div>
+
+    <!-- ─── PROFIL SISWA ──────────────────────────────── -->
+    <div id="tab-profil" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>👤 Profil Siswa
+          <div class="card-actions"><select id="profilFilterKelas" onchange="renderProfilList()" style="width:auto;"></select></div>
+        </h3></div>
+        <div class="profil-grid" id="profilList"></div>
+      </div>
+      <div class="card" id="profilDetail"><div class="empty" data-icon="👆">Klik nama siswa untuk profil lengkap.</div></div>
+    </div>
+
+    <!-- ─── SISWA & KELAS ─────────────────────────────── -->
+    <div id="tab-siswa" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>🏫 Daftar Kelas</h3></div>
+        <div id="kelasList" style="margin-bottom:14px;"></div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-size:.82rem;font-weight:700;margin-bottom:8px;">Tambah Kelas Baru</div>
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <div class="field" style="margin:0;flex:1;max-width:220px;">
+              <label>Nama Kelas</label>
+              <input type="text" id="newKelasNama" placeholder="9D / 10A / XI IPA 2">
+            </div>
+            <button class="btn btn-primary" onclick="addKelas()">Tambah</button>
+          </div>
+          <div class="helper" style="margin-top:6px;">Kelas baru langsung tersedia di semua form.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>👥 Manajemen Siswa
+          <div class="card-actions">
+            <select id="siswaFilterKelas" onchange="renderSiswaDaftarAdmin()" style="width:auto;"></select>
+            <button class="btn btn-secondary btn-sm" onclick="exportSiswaXLSX()">⬇ Export</button>
+          </div>
+        </h3></div>
+        <div id="siswaDaftarAdmin"></div>
+      </div>
+      <div class="grid g2">
+        <div class="card" style="margin:0;">
+          <div class="card-header"><h3>➕ Tambah Siswa</h3></div>
+          <div class="grid g2">
+            <div class="field"><label>Kelas</label><select id="newSiswaKelas" onchange="updateNoUrut()"></select></div>
+            <div class="field"><label>No. Urut</label><input type="number" id="newSiswaNo" min="1" placeholder="otomatis"></div>
+          </div>
+          <div class="field"><label>Nama Lengkap <span style="color:var(--bad);">*</span></label><input type="text" id="newSiswaName" placeholder="Nama siswa"></div>
+          <div class="grid g2">
+            <div class="field"><label>Jenis Kelamin</label>
+              <select id="newSiswaJK"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
+            </div>
+            <div class="field"><label>NISN (opsional)</label><input type="text" id="newSiswaNoInduk" placeholder="NISN"></div>
+          </div>
+          <button class="btn btn-primary" onclick="addSiswa()">Tambah Siswa</button>
+        </div>
+        <div class="card" style="margin:0;">
+          <div class="card-header"><h3>📋 Import dari Teks</h3></div>
+          <p style="font-size:.8rem;color:var(--text-dim);margin-bottom:10px;line-height:1.6;">Tempel daftar nama (satu per baris). No. urut otomatis.</p>
+          <div class="field"><label>Kelas Tujuan</label><select id="importSiswaKelas"></select></div>
+          <div class="field"><label>Daftar Nama</label>
+            <textarea id="importSiswaTeks" placeholder="Ahmad Fulan&#10;Budi Santoso&#10;Citra Dewi&#10;..." style="min-height:110px;font-family:'JetBrains Mono',monospace;font-size:.82rem;"></textarea>
+          </div>
+          <div id="importPreview" style="margin-top:8px;margin-bottom:8px;font-size:.78rem;"></div>
+          <div class="btn-row">
+            <button class="btn btn-secondary btn-sm" onclick="previewImport()">👁 Preview</button>
+            <button class="btn btn-primary btn-sm" id="importSiswaBtn" onclick="importSiswaBulk()" style="display:none;">✓ Import</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── PENGATURAN ────────────────────────────────── -->
+    <div id="tab-pengaturan" class="tab-content">
+      <div class="card">
+        <div class="card-header"><h3>⚙️ Pengaturan</h3></div>
+
+        <div class="setting-section">
+          <h4>📅 Periode Aktif</h4>
+          <p>Filter data berdasarkan semester ini. Data semester lain tetap aman.</p>
+          <div class="grid g3" style="margin-bottom:10px;">
+            <div class="field"><label>Semester</label><select id="settingSemester"><option>Ganjil</option><option>Genap</option></select></div>
+            <div class="field"><label>Tahun Ajaran</label><input type="text" id="settingTA" placeholder="2026/2027"></div>
+            <div class="field"><label>KKM</label><input type="number" id="settingKKM" min="0" max="100" placeholder="75"></div>
+          </div>
+          <button class="btn btn-primary" onclick="savePeriodSettings()">Simpan &amp; Terapkan</button>
+        </div>
+
+        <div class="setting-section admin-only">
+          <h4>👥 Manajemen Akun Guru</h4>
+          <div id="teacherList" style="margin-bottom:12px;"></div>
+          <div style="border-top:1px solid var(--border);padding-top:12px;">
+            <div style="font-size:.8rem;font-weight:700;margin-bottom:8px;">Tambah Guru Baru</div>
+            <div class="grid g2" style="margin-bottom:8px;">
+              <div class="field"><label>Nama</label><input type="text" id="newTeacherNama" placeholder="Nama guru"></div>
+              <div class="field"><label>Username</label><input type="text" id="newTeacherUsername" placeholder="username login"></div>
+            </div>
+            <div class="grid g2" style="margin-bottom:8px;">
+              <div class="field"><label>Mata Pelajaran</label><input type="text" id="newTeacherMapel" placeholder="Matematika"></div>
+              <div class="field"><label>Password Awal</label><input type="password" id="newTeacherPw" placeholder="password awal"></div>
+            </div>
+            <button class="btn btn-primary" onclick="addTeacher()">Tambah Guru</button>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <h4>💾 Backup &amp; Restore Data</h4>
+          <p>Unduh seluruh data sebagai file JSON untuk arsip, atau pulihkan dari backup sebelumnya.</p>
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="backupAllData()">⬇ Unduh Backup JSON</button>
+            <button class="btn btn-primary" onclick="restoreFromBackup()">⬆ Restore dari Backup</button>
+          </div>
+        </div>
+
+        <div class="setting-section">
+          <h4>🗑️ Hapus Data per Kategori</h4>
+          <p>Hapus data tertentu semester ini. Berguna saat ganti semester.</p>
+          <div class="btn-row" style="flex-wrap:wrap;">
+            <button class="btn btn-warn btn-sm" onclick="confirmDelete('jurnal')">Hapus Jurnal</button>
+            <button class="btn btn-warn btn-sm" onclick="confirmDelete('absensi')">Hapus Absensi</button>
+            <button class="btn btn-warn btn-sm" onclick="confirmDelete('keaktifan')">Hapus Keaktifan</button>
+            <button class="btn btn-warn btn-sm" onclick="confirmDelete('kejadian')">Hapus Kejadian</button>
+            <button class="btn btn-warn btn-sm" onclick="confirmDelete('nilai')">Hapus Nilai</button>
+            <button class="btn btn-warn btn-sm" onclick="confirmDelete('tp')">Hapus TP</button>
+          </div>
+        </div>
+
+        <div class="setting-section" style="border-color:var(--bad);">
+          <h4 style="color:var(--bad);">⚠️ Reset Semua Data Transaksi</h4>
+          <p>Hapus <strong>semua</strong> data (jurnal, absensi, keaktifan, kejadian, nilai, TP). Data siswa aman. Tidak bisa dibatalkan!</p>
+          <button class="btn btn-danger" onclick="confirmDelete('semua')">Reset Semua</button>
+        </div>
+      </div>
+    </div>
+
+      </div><!-- /tab-body -->
+    </div><!-- /main-area -->
+  </div><!-- /app-shell -->
+</div><!-- /app -->
+
+<!-- ═══ MODAL: RESTORE ════════════════════════════════════ -->
+<div class="modal-overlay" id="restoreModal">
+  <div class="modal" style="max-width:520px;">
+    <h3>⬆️ Restore dari Backup JSON</h3>
+    <p style="font-size:.8rem;color:var(--text-dim);margin-bottom:10px;">Data yang sudah ada tidak akan ditimpa. Data baru dari backup akan ditambahkan.</p>
+    <pre id="restoreModalInfo"></pre>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('restoreModal').classList.remove('open')">Batal</button>
+      <button class="btn btn-primary" onclick="executeRestore()">✓ Mulai Restore</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: EDIT SISWA ═════════════════════════════════ -->
+<div class="modal-overlay" id="editSiswaModal">
+  <div class="modal">
+    <h3>✏️ Edit Data Siswa</h3>
+    <input type="hidden" id="editSiswaId">
+    <div class="grid g2">
+      <div class="field"><label>No. Urut</label><input type="number" id="editSiswaNo" min="1"></div>
+      <div class="field"><label>Kelas</label><select id="editSiswaKelas"></select></div>
+    </div>
+    <div class="field"><label>Nama Lengkap</label><input type="text" id="editSiswaName"></div>
+    <div class="grid g2">
+      <div class="field"><label>Jenis Kelamin</label>
+        <select id="editSiswaJK"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
+      </div>
+      <div class="field"><label>NISN</label><input type="text" id="editSiswaNoInduk"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('editSiswaModal').classList.remove('open')">Batal</button>
+      <button class="btn btn-primary" onclick="saveEditSiswa()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: KONFIRMASI HAPUS ══════════════════════════ -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3 id="deleteModalTitle">Konfirmasi Hapus</h3>
+    <p id="deleteModalBody" style="font-size:.86rem;color:var(--text-dim);line-height:1.6;margin-bottom:12px;"></p>
+    <div class="field">
+      <label>Ketik <strong>HAPUS</strong> untuk konfirmasi</label>
+      <input type="text" id="deleteConfirmInput" placeholder="HAPUS" oninput="checkDeleteConfirm()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Batal</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn" onclick="executeDelete()" disabled>Hapus</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+// ─── Patch: switchTab update topbar title ───────────────────
+const TAB_TITLES = {
+  dashboard:'Dashboard', tp:'Tujuan Pembelajaran', pertemuan:'Pertemuan & Absensi',
+  keaktifan:'Keaktifan Siswa', nilai:'Input & Rekap Nilai', kejadian:'Catatan Kejadian',
+  kalender:'Kalender Mengajar', profil:'Profil Siswa', siswa:'Siswa & Kelas', pengaturan:'Pengaturan'
+};
+const _origSwitch = window.switchTab;
+window.switchTab = function(tab){
+  _origSwitch(tab);
+  const el = document.getElementById('topbarTitle');
+  if(el) el.textContent = TAB_TITLES[tab] || tab;
+  // Close mobile sidebar on nav
+  document.querySelector('.sidebar').classList.remove('open');
+};
+
+// ─── Patch: init defaults ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  const t = new Date().toISOString().slice(0,10);
+  ['jTanggal','pTanggal','iTanggal','gTanggal'].forEach(id=>{
+    const el=document.getElementById(id); if(el && !el.value) el.value=t;
+  });
+});
+
+// ─── Patch: bootApp → set avatar ────────────────────────────
+const _origBoot = bootApp;
+window.bootApp = async function(){
+  await _origBoot();
+  const initEl = document.getElementById('teacherInitial');
+  if(initEl && currentTeacher){
+    initEl.textContent = currentTeacher.nama.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  }
+};
+
+// ─── Patch: renderAttGrid use att-2col wrapper ───────────────
+const _origRenderAtt = window.renderAttGrid;
+window.renderAttGrid = function(list){
+  _origRenderAtt(list);
+  // The grid is already wrapped by renderAttGrid's 2-col logic
+  // Just ensure the container uses our CSS class
+  const grid = document.getElementById('attendanceGrid');
+  if(grid && grid.firstChild){
+    grid.firstChild.className = 'att-2col';
+  }
+};
+
+// ─── Sidebar: close on overlay click (mobile) ────────────────
+document.addEventListener('click', e=>{
+  const sidebar = document.querySelector('.sidebar');
+  const toggle = document.querySelector('.sidebar-toggle');
+  if(sidebar.classList.contains('open') && !sidebar.contains(e.target) && !toggle.contains(e.target)){
+    sidebar.classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>
