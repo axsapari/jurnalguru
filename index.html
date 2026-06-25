@@ -265,12 +265,13 @@ tr:hover td{background:rgba(91,110,245,.035);}
 .att-2col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px;}
 @media(max-width:680px){.att-2col{grid-template-columns:1fr;}}
 .attendance-row{display:flex;align-items:center;justify-content:space-between;
-  padding:7px 10px;background:var(--panel-2);border-radius:var(--radius-sm);margin-bottom:4px;}
-.nm{font-size:.84rem;font-weight:500;}
-.no{color:var(--text-dim);font-size:.74rem;margin-right:6px;}
-.att-buttons{display:flex;gap:4px;}
-.att-btn{width:32px;height:28px;border-radius:6px;border:1.5px solid var(--border);
-  background:var(--panel);color:var(--text-dim);font-size:.7rem;font-weight:700;cursor:pointer;transition:.1s;}
+  padding:5px 7px;background:var(--panel-2);border-radius:var(--radius-sm);margin-bottom:4px;
+  gap:4px;min-width:0;}
+.nm{font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;}
+.no{color:var(--text-dim);font-size:.72rem;margin-right:4px;flex-shrink:0;}
+.att-buttons{display:flex;gap:3px;flex-shrink:0;}
+.att-btn{width:28px;height:26px;border-radius:5px;border:1.5px solid var(--border);
+  background:var(--panel);color:var(--text-dim);font-size:.68rem;font-weight:700;cursor:pointer;transition:.1s;}
 .att-btn.h.sel{background:var(--good-lt);border-color:var(--good);color:var(--good);}
 .att-btn.s.sel{background:var(--warn-lt);border-color:var(--warn);color:var(--warn);}
 .att-btn.i.sel{background:var(--accent-lt);border-color:var(--accent);color:var(--accent);}
