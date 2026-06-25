@@ -405,15 +405,17 @@ function renderAttGrid(list){
       </div>
     </div>`;
   });
-  // Bagi menjadi 2 kolom
-  const half=Math.ceil(items.length/2);
-  const col1=items.slice(0,half);
-  const col2=items.slice(half);
-  document.getElementById('attendanceGrid').innerHTML=
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px;">
-      <div>${col1.join('')}</div>
-      <div>${col2.join('')}</div>
-    </div>`;
+// Bagi menjadi 3 kolom
+const third=Math.ceil(items.length/3);
+const col1=items.slice(0,third);
+const col2=items.slice(third,third*2);
+const col3=items.slice(third*2);
+document.getElementById('attendanceGrid').innerHTML=
+  `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px;">
+    <div>${col1.join('')}</div>
+    <div>${col2.join('')}</div>
+    <div>${col3.join('')}</div>
+  </div>`;
 }
 function setAtt(id,st){ currentAttMap[id]=st; renderAttGrid(studentsByClass(document.getElementById('jKelas').value)); }
 function markAllHadir(){ studentsByClass(document.getElementById('jKelas').value).forEach(s=>currentAttMap[s.id]='Hadir'); renderAttGrid(studentsByClass(document.getElementById('jKelas').value)); }
